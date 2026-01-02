@@ -21,7 +21,7 @@ def check_status():
 
 # This function runs the API in the background
 def run_api():
-    uvicorn.run(api, host="0.0.0.0", port=8000)
+    uvicorn.run(api, host="0.0.0.0", port=5000)
 
 # Start the API thread
 Thread(target=run_api, daemon=True).start()

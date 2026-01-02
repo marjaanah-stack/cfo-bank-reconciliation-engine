@@ -18,12 +18,13 @@ args = "Run Python"
 name = "Run Python"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main.py"
-
-[workflows.workflow.metadata]
-outputType = "console"
+waitForPort = 5000
 
 [nix]
 channel = "stable-25_05"
@@ -31,4 +32,8 @@ packages = ["glibcLocales"]
 
 [[ports]]
 localPort = 8000
+externalPort = 80
+
+[[ports]]
+localPort = 5000
 externalPort = 80
