@@ -1,3 +1,30 @@
+from fastapi import FastAPI
+import uvicorn
+from threading import Thread
+
+# Initialize the API
+api = FastAPI()
+
+@api.get("/check-status")
+def check_status():
+    # This is what n8n will call to see if the AI is paused
+    config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
+    state = app.get_state(config)
+
+    if state.next:
+        return {
+            "status": "PAUSED",
+            "at_node": state.next,
+            "unmatched_items": state.values.get("unmatched_items", [])
+        }
+    return {"status": "RUNNING_OR_COMPLETE"}
+
+# This function runs the API in the background
+def run_api():
+    uvicorn.run(api, host="0.0.0.0", port=8000)
+
+# Start the API thread
+Thread(target=run_api, daemon=True).start()
 import os
 import pandas as pd
 from typing import TypedDict, List

@@ -28,3 +28,7 @@ outputType = "console"
 [nix]
 channel = "stable-25_05"
 packages = ["glibcLocales"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80
