@@ -59,9 +59,16 @@ def human_review_node(state: AgentState):
     print("⏸️ PAUSED: Waiting for Maaja to review unmatched items in Slack...")
     return state
 
+def get_categories_from_db():
+    with psycopg.connect(DB_URI) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name FROM categories ORDER BY name")
+            return [row[0] for row in cur.fetchall()]
+
 def investigator_node(state: AgentState):
     print("🔍 Investigator is analyzing unmatched items...")
-    categories = ['Interest Income', 'Bank Fees', 'Software Subscription', 'Office Rent', 'Professional Services']
+    categories = get_categories_from_db()
+    print(f"📋 Loaded {len(categories)} categories from database: {categories}")
     unmatched = state.get('unmatched_items', [])
     
     if not unmatched:
