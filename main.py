@@ -21,6 +21,7 @@ class AgentState(TypedDict):
     erp_data: list
     matches: list
     unmatched_items: list
+    ai_suggestion: str
 
 def matchmaker_node(state: AgentState):
     print("🤖 Matchmaker is running...")
