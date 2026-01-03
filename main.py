@@ -257,6 +257,33 @@ def submit_choice(category: str):
         "audit_result": audit_result
     }
 
+@api.post("/finalize-reconciliation")
+def finalize_reconciliation(status: str):
+    print("🔎 Auditor received approval. Starting final safety check...")
+    
+    config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
+    
+    state = app.get_state(config)
+    if not state.next:
+        return {"error": "No pending review. The graph is not paused."}
+    
+    print(f"📥 Received status from n8n: {status}")
+    
+    app.update_state(config, {"user_choice": status})
+    
+    results = []
+    for event in app.stream(None, config):
+        results.append(list(event.keys())[0])
+    
+    final_state = app.get_state(config)
+    audit_result = final_state.values.get("audit_result", {})
+    
+    return {
+        "status": "COMPLETE",
+        "nodes_processed": results,
+        "audit_result": audit_result
+    }
+
 def run_initial_reconciliation():
     bank_list = pd.read_csv('bank_statement.csv').to_dict('records')
     erp_list = pd.read_csv('erp_ledger.csv').to_dict('records')
