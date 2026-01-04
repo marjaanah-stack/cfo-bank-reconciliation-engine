@@ -137,42 +137,62 @@ def auditor_node(state: AgentState):
     user_choice = state.get('user_choice', '')
     unmatched = state.get('unmatched_items', [])
     
-    audit_results = []
+    if not unmatched:
+        print("✅ All items processed!")
+        return {"audit_result": {"items": [], "total_processed": 0}, "unmatched_items": []}
     
-    for item in unmatched:
-        desc = item['desc']
-        amount = float(item['amount'])
-        flags = []
-        status = 'RECONCILED'
-        
-        if abs(amount) > 5000:
-            flags.append('MATERIALITY: Requires Secondary Sign-off (amount > $5,000)')
-            status = 'PENDING_SECONDARY_SIGNOFF'
-            print(f"⚠️ MATERIALITY FLAG: {desc} (${amount}) requires secondary sign-off")
-        
-        if user_choice == 'Interest Income' and amount < 0:
-            flags.append('LOGIC ERROR: Interest Income cannot be negative')
-            status = 'LOGIC_ERROR'
-            print(f"❌ LOGIC ERROR: {desc} - Interest Income selected but amount is negative (${amount})")
-        
-        audit_flag_str = '; '.join(flags) if flags else None
-        
-        if status == 'RECONCILED':
-            save_reconciled_transaction(desc, amount, user_choice, status, audit_flag_str)
-            print(f"✅ RECONCILED: {desc} -> {user_choice}")
-        else:
-            save_reconciled_transaction(desc, amount, user_choice, status, audit_flag_str)
-            print(f"🚩 FLAGGED: {desc} -> {status}")
-        
-        audit_results.append({
-            "description": desc,
-            "amount": amount,
-            "category": user_choice,
-            "status": status,
-            "flags": flags
-        })
+    item = unmatched[0]
+    remaining_unmatched = unmatched[1:]
     
-    return {"audit_result": {"items": audit_results, "total_processed": len(audit_results)}}
+    desc = item['desc']
+    amount = float(item['amount'])
+    flags = []
+    status = 'RECONCILED'
+    
+    if abs(amount) > 5000:
+        flags.append('MATERIALITY: Requires Secondary Sign-off (amount > $5,000)')
+        status = 'PENDING_SECONDARY_SIGNOFF'
+        print(f"⚠️ MATERIALITY FLAG: {desc} (${amount}) requires secondary sign-off")
+    
+    if user_choice == 'Interest Income' and amount < 0:
+        flags.append('LOGIC ERROR: Interest Income cannot be negative')
+        status = 'LOGIC_ERROR'
+        print(f"❌ LOGIC ERROR: {desc} - Interest Income selected but amount is negative (${amount})")
+    
+    audit_flag_str = '; '.join(flags) if flags else None
+    
+    save_reconciled_transaction(desc, amount, user_choice, status, audit_flag_str)
+    if status == 'RECONCILED':
+        print(f"✅ RECONCILED: {desc} -> {user_choice}")
+    else:
+        print(f"🚩 FLAGGED: {desc} -> {status}")
+    
+    audit_result = {
+        "description": desc,
+        "amount": amount,
+        "category": user_choice,
+        "status": status,
+        "flags": flags
+    }
+    
+    if remaining_unmatched:
+        print(f"🔄 {len(remaining_unmatched)} more items to review. Looping back to Investigator...")
+    else:
+        print("🏁 All unmatched items have been processed!")
+    
+    return {
+        "audit_result": {"item": audit_result, "remaining": len(remaining_unmatched)},
+        "unmatched_items": remaining_unmatched,
+        "user_choice": "",
+        "ai_suggestion": "",
+        "button_options": []
+    }
+
+def should_loop_back(state: AgentState):
+    remaining = state.get('unmatched_items', [])
+    if len(remaining) > 0:
+        return "investigator"
+    return END
 
 workflow = StateGraph(AgentState)
 workflow.add_node("matchmaker", matchmaker_node)
@@ -190,7 +210,14 @@ workflow.add_conditional_edges(
 )
 workflow.add_edge("investigator", "human_review")
 workflow.add_edge("human_review", "auditor")
-workflow.add_edge("auditor", END)
+workflow.add_conditional_edges(
+    "auditor",
+    should_loop_back,
+    {
+        "investigator": "investigator",
+        END: END
+    }
+)
 
 app = workflow.compile(checkpointer=checkpointer, interrupt_before=["human_review"])
 print("✅ Graph Compiled with 'Human-in-the-Loop' safety trigger.")
