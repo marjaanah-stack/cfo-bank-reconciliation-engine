@@ -358,20 +358,37 @@ def submit_choice(category: str):
         "audit_result": audit_result
     }
 
+def get_row_status(description):
+    with psycopg.connect(DB_URI) as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT status FROM bank_statement WHERE "Description" ILIKE %s', (f"%{description}%",))
+            row = cur.fetchone()
+            return row[0] if row else None
+
 @api.get("/finalize-reconciliation")
 def finalize_reconciliation(description: str = "", category: str = ""):
     print(f"📥 Received from n8n: description={description}, category={category}")
     
-    if not description or not category:
-        return {"error": "Missing description or category parameter"}
+    if not description:
+        print("❌ ERROR: Missing description parameter")
+        return {"error": "Missing description parameter"}
+    
+    if not category or category.strip() == "":
+        print(f"❌ ERROR: Category is blank for {description}. Stopping.")
+        return {"error": "Category is blank. Cannot process."}
+    
+    current_status = get_row_status(description)
+    if current_status == "RECONCILED":
+        print(f"⚠️ DUPLICATE: {description} is already RECONCILED. Ignoring request.")
+        return {"status": "ALREADY_RECONCILED", "description": description}
     
     update_bank_statement_status(description, "RECONCILED")
     save_reconciled_transaction(description, 0, category, "RECONCILED", None)
     print(f"✅ RECONCILED: {description} -> {category}")
     
     import time
-    print("⏳ Waiting 10 seconds before processing next item...")
-    time.sleep(10)
+    print("⏳ Waiting 15 seconds before processing next item...")
+    time.sleep(15)
     
     config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
     app.update_state(config, {"user_choice": category})
@@ -408,6 +425,6 @@ def run_initial_reconciliation():
         print(f"🚨 SYSTEM ALERT: The graph has PAUSED at {state.next}. It is waiting for your approval.")
 
 if __name__ == "__main__":
-    Thread(target=run_initial_reconciliation, daemon=True).start()
     print("🚀 STARTING SERVER ON PORT 5000...")
+    print("⏸️ Matchmaker NOT started. Use POST /run-reconciliation to trigger manually.")
     uvicorn.run(api, host="0.0.0.0", port=5000)
