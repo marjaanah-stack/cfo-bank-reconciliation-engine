@@ -91,7 +91,7 @@ def send_to_slack(item, ai_suggestion, button_options):
     print(f"📤 FULL FINAL URL: {full_url}")
     
     try:
-        response = requests.get(full_url, timeout=10)
+        response = requests.get(full_url, timeout=30)
         print(f"📬 n8n Response Status: {response.status_code}")
         
         if response.status_code == 200:
@@ -368,6 +368,10 @@ def finalize_reconciliation(description: str = "", category: str = ""):
     update_bank_statement_status(description, "RECONCILED")
     save_reconciled_transaction(description, 0, category, "RECONCILED", None)
     print(f"✅ RECONCILED: {description} -> {category}")
+    
+    import time
+    print("⏳ Waiting 10 seconds before processing next item...")
+    time.sleep(10)
     
     config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
     app.update_state(config, {"user_choice": category})
