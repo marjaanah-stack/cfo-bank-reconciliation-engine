@@ -355,47 +355,37 @@ def submit_choice(category: str):
         "audit_result": audit_result
     }
 
-@api.post("/finalize-reconciliation")
-async def finalize_reconciliation(request: Request):
-    body = await request.json()
-    print(f"📥 Received payload from n8n: {body}")
+@api.get("/finalize-reconciliation")
+def finalize_reconciliation(description: str = "", category: str = ""):
+    print(f"📥 Received from n8n: description={description}, category={category}")
     
-    status = body.get("status", "")
+    if not description or not category:
+        return {"error": "Missing description or category parameter"}
     
-    if status == "RECONCILED":
-        print("⚠️ CFO OVERRIDE DETECTED. Bypassing strict validation.")
-        
-        with psycopg.connect(DB_URI) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    UPDATE reconciled_transactions 
-                    SET status = 'RECONCILED', audit_flags = 'CFO Override'
-                    WHERE id = 1
-                """)
-                if cur.rowcount == 0:
-                    cur.execute("""
-                        INSERT INTO reconciled_transactions (description, amount, category, status, audit_flags)
-                        VALUES ('Transaction #1', 0, 'CFO Override', 'RECONCILED', 'CFO Override')
-                    """)
-                conn.commit()
-        
-        config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
-        app.update_state(config, {"user_choice": "RECONCILED"})
-        
-        results = []
-        try:
-            for event in app.stream(None, config):
-                results.append(list(event.keys())[0])
-        except Exception as e:
-            print(f"Graph already complete or error: {e}")
-        
-        return {
-            "status": "RECONCILED",
-            "message": "CFO Override applied. Transaction #1 reconciled.",
-            "nodes_processed": results
-        }
+    update_bank_statement_status(description, "RECONCILED")
+    save_reconciled_transaction(description, 0, category, "RECONCILED", None)
+    print(f"✅ RECONCILED: {description} -> {category}")
     
-    return {"status": "RECEIVED", "payload": body}
+    config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
+    app.update_state(config, {"user_choice": category})
+    
+    results = []
+    try:
+        for event in app.stream(None, config):
+            results.append(list(event.keys())[0])
+    except Exception as e:
+        print(f"Graph stream error: {e}")
+    
+    final_state = app.get_state(config)
+    remaining = len(final_state.values.get("unmatched_items", []))
+    
+    return {
+        "status": "RECONCILED",
+        "description": description,
+        "category": category,
+        "remaining_items": remaining,
+        "nodes_processed": results
+    }
 
 def run_initial_reconciliation():
     bank_list = pd.read_csv('bank_statement.csv').to_dict('records')
