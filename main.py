@@ -243,9 +243,11 @@ def auditor_node(state: AgentState):
     }
 
 def should_loop_back(state: AgentState):
-    remaining = state.get('unmatched_items', [])
+    remaining = get_unmatched_from_db()
     if len(remaining) > 0:
-        return "investigator"
+        print(f"🔄 Loop: {len(remaining)} items remaining, going back to matchmaker")
+        return "matchmaker"
+    print("🏁 All items processed!")
     return END
 
 workflow = StateGraph(AgentState)
@@ -268,7 +270,7 @@ workflow.add_conditional_edges(
     "auditor",
     should_loop_back,
     {
-        "investigator": "investigator",
+        "matchmaker": "matchmaker",
         END: END
     }
 )
