@@ -74,25 +74,27 @@ def should_continue(state: AgentState):
 import requests
 
 def send_to_slack(item, ai_suggestion, button_options):
+    from urllib.parse import urlencode
+    
     webhook_url = os.environ.get("N8N_WEBHOOK_URL")
     if not webhook_url:
         print("❌ N8N_WEBHOOK_URL not configured")
         return False
     
-    payload = {
-        "transaction": {
-            "description": item.get("desc", "Unknown"),
-            "amount": item.get("amount", 0)
-        },
+    params = {
+        "description": item.get("desc", "Unknown"),
+        "amount": item.get("amount", 0),
         "ai_suggestion": ai_suggestion,
-        "button_options": button_options
+        "button_option_1": button_options[0] if len(button_options) > 0 else "",
+        "button_option_2": button_options[1] if len(button_options) > 1 else ""
     }
     
-    print(f"📤 Attempting to send to: {webhook_url}")
-    print(f"📦 Payload: {payload}")
+    full_url = f"{webhook_url}?{urlencode(params)}"
+    print(f"📤 Attempting to send to: {full_url[:100]}...")
+    print(f"📦 Query Params: {params}")
     
     try:
-        response = requests.post(webhook_url, json=payload, timeout=10)
+        response = requests.get(full_url, timeout=10)
         print(f"📬 n8n Response Status: {response.status_code}")
         
         if response.status_code == 200:
