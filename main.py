@@ -71,8 +71,45 @@ def should_continue(state: AgentState):
         return "human_review"
     return END
 
+import requests
+
+def send_to_slack(item, ai_suggestion, button_options):
+    webhook_url = os.environ.get("N8N_WEBHOOK_URL")
+    if not webhook_url:
+        print("❌ N8N_WEBHOOK_URL not configured")
+        return False
+    
+    payload = {
+        "transaction": {
+            "description": item.get("desc", "Unknown"),
+            "amount": item.get("amount", 0)
+        },
+        "ai_suggestion": ai_suggestion,
+        "button_options": button_options
+    }
+    
+    try:
+        response = requests.post(webhook_url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print("✅ SENT TO SLACK")
+            return True
+        else:
+            print(f"❌ Slack webhook failed: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"❌ Slack webhook error: {e}")
+        return False
+
 def human_review_node(state: AgentState):
     print("⏸️ PAUSED: Waiting for Maaja to review unmatched items in Slack...")
+    
+    unmatched = state.get('unmatched_items', [])
+    ai_suggestion = state.get('ai_suggestion', '')
+    button_options = state.get('button_options', [])
+    
+    if unmatched:
+        send_to_slack(unmatched[0], ai_suggestion, button_options)
+    
     return state
 
 def get_categories_from_db():
@@ -258,6 +295,24 @@ def check_status():
             "button_options": state.values.get("button_options", [])
         }
     return {"status": "RUNNING_OR_COMPLETE"}
+
+@api.post("/resend-to-slack")
+def resend_to_slack():
+    config = {"configurable": {"thread_id": "DEC_2025_RECON"}}
+    state = app.get_state(config)
+    
+    if not state.next:
+        return {"error": "No pending review to resend"}
+    
+    unmatched = state.values.get("unmatched_items", [])
+    ai_suggestion = state.values.get("ai_suggestion", "")
+    button_options = state.values.get("button_options", [])
+    
+    if unmatched:
+        success = send_to_slack(unmatched[0], ai_suggestion, button_options)
+        return {"status": "SENT" if success else "FAILED", "transaction": unmatched[0]}
+    
+    return {"error": "No unmatched items found"}
 
 @api.post("/run-reconciliation")
 def run_reconciliation():
