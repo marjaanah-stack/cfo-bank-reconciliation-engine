@@ -1,8 +1,6 @@
 # 🏦 Agentic Finance: Multi-Agent Month-End Reconciliation Mesh
 ### *Autonomous Concurrent Orchestration for Modern Fintech & Energy Tech Ledgers*
 
-![Project Architecture](images/n8n_canvas.png)
-
 ## 🎯 Executive Overview
 This system replaces traditional, linear bank reconciliation with a **Multi-Agent Orchestration Mesh**. By utilizing a "Human-in-the-Loop" (HITL) safety architecture, the mesh allows autonomous AI agents to perform deep data investigation and categorization while ensuring a Fractional CFO maintains absolute strategic control over the final ledger entry.
 
