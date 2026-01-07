@@ -10,8 +10,9 @@ This system replaces traditional, linear bank reconciliation with a **Multi-Agen
 The engine is a stateful, cyclic graph built on **LangGraph**, where specialized agents delegate tasks and share "state" to reach a verified financial conclusion.
 
 
+
 ### **The Agent Roster & Delegation Logic**
-1.  **The Matchmaker (Ingestion Agent):** Monitors the **Supabase** "bank_statement" table for any `UNMATCHED` entries. It acts as the gatekeeper, initiating the orchestration mesh only when new data is detected.
+1.  **The Matchmaker (Ingestion Agent):** Monitors the **Supabase (Postgres)** "bank_statement" table for any `UNMATCHED` entries. It initiates the orchestration mesh only when new data is detected.
 2.  **The Wrangler (Data Cleaning Agent):** Handles "messy" raw bank data. It strips out irrelevant metadata (e.g., store numbers, transaction IDs) to present a clean string to the other agents, reducing token costs and increasing accuracy.
 3.  **The Investigator (Research Agent):** Uses LLM-driven reasoning to analyze complex transaction strings (e.g., `ADOBE *SUBSCRIPTION`). It cross-references these against a dynamic **Chart of Accounts** fetched in real-time.
 4.  **The Auditor (Safety & Validation Agent):** The primary security layer. It performs logic checks on the Investigator’s suggestion. If the Investigator suggests an "Income" category for a negative amount (debit), the Auditor triggers a `LOGIC_ERROR` and halts the process.
