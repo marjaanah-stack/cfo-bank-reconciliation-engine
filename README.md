@@ -35,7 +35,7 @@ The engine is a stateful, cyclic graph built on **LangGraph**, where specialized
 
 ### **Alleviating Autonomous AI Concerns**
 To ensure record-keeping integrity and eliminate "black box" AI anxiety, the system is built on two core principles:
-* **Stateful Persistence:** Every step of the agentic reasoning is logged in the **PostgreSQL** database before the next agent begins. This provides a forensic-level audit trail for every reconciliation.
+* **Stateful Persistence:** Every step of the agentic reasoning is logged in the **Postgres** database before the next agent begins. This provides a forensic-level audit trail for every reconciliation.
 * **Deduplication Shield:** A built-in check verifies if a row is already `RECONCILED` before any agent can attempt a new update. This prevents duplicate entries and ledger corruption.
 
 ---
